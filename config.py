@@ -1,0 +1,14 @@
+
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+load_dotenv()
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_ID = [814180858, 863615087]  # Keep as a list
+  # Remove the list brackets
+  # Ensure IDs are integers, not strings
+
+
