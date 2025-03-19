@@ -8,7 +8,7 @@ from google.oauth2 import service_account
 
 # Load Google Drive credentials
 SCOPES = ['https://www.googleapis.com/auth/drive']
-SERVICE_ACCOUNT_FILE = "credentials.json"
+SERVICE_ACCOUNT_FILE = "bazarbotdb-f971206a6e45.json"
 
 def get_drive_service():
     """Authenticate and return the Google Drive API service."""
