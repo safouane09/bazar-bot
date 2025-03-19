@@ -79,3 +79,11 @@ async def main():
 # ✅ Run the bot
 if __name__ == "__main__":
     asyncio.run(main())
+
+import atexit
+
+def on_exit():
+    """Upload database when bot stops."""
+    upload_db(DB_PATH, GDRIVE_FOLDER_ID)
+
+atexit.register(on_exit)
