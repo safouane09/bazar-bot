@@ -1,7 +1,8 @@
 import asyncio
 import logging
-
+import threading
 from aiogram import Bot, Dispatcher
+from aiohttp import web  # ✅ Import web server
 
 from config import BOT_TOKEN
 from handlers import start, profile
@@ -23,12 +24,11 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-# Register handlers (Only once)
-
+# Register handlers
 dp.include_router(start.router)
 dp.include_router(profile.router)
 dp.include_router(referrals_router)
-dp.include_router(order_router)  # ✅ Register the order router
+dp.include_router(order_router)
 dp.include_router(order_handlers_router)
 dp.include_router(earnings_router)
 dp.include_router(request_payement_router)
@@ -38,9 +38,27 @@ dp.include_router(removeuser_router)
 dp.include_router(list_users_router)
 dp.include_router(orders_router)
 
+# ✅ Dummy Web Server for Koyeb Health Check
+async def health_check(request):
+    return web.Response(text="OK")
+
+async def run_web_server():
+    app = web.Application()
+    app.router.add_get("/", health_check)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", 8000)
+    await site.start()
+
 async def main():
     logging.info("Starting bot...")
-    await dp.start_polling(bot)
+
+    # ✅ Run bot and web server together
+    await asyncio.gather(
+        dp.start_polling(bot),
+        run_web_server()
+    )
 
 if __name__ == "__main__":
     asyncio.run(main())
+#hna modifyiiit
