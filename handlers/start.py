@@ -12,6 +12,7 @@ class Register(StatesGroup):
     phone_number = State()
     referral_code = State()
 
+# Keyboard to request phone number
 request_phone_kb = ReplyKeyboardMarkup(
     keyboard=[[KeyboardButton(text="📞 Send Phone Number", request_contact=True)]],
     resize_keyboard=True,
@@ -23,7 +24,15 @@ async def start_command(message: Message, state: FSMContext):
     user = get_employee(message.from_user.id)
 
     if user:
-        await message.answer(f"✅ You are already registered, {user[2]}!\nUse /profile to see your info.")
+        # ✅ Ensure `user` has expected structure before accessing elements
+        if isinstance(user, (list, tuple)) and len(user) > 2:
+            full_name = user[2]  # Assuming full_name is at index 2
+        elif isinstance(user, dict) and "full_name" in user:
+            full_name = user["full_name"]
+        else:
+            full_name = "User"
+
+        await message.answer(f"✅ You are already registered, {full_name}!\nUse /profile to see your info.")
     else:
         await message.answer("👋 Welcome! Please send your full name to register.")
         await state.set_state(Register.full_name)
@@ -65,7 +74,8 @@ async def get_referral_code(message: Message, state: FSMContext):
 
     # ✅ Only check referrer in DB if it's valid
     if referrer_id:
-        if not get_employee(referrer_id):
+        referrer = get_employee(referrer_id)
+        if not referrer:
             await message.answer("⚠️ Invalid referral code! Please enter a valid Telegram ID or type '0' if you don’t have one:")
             return
 

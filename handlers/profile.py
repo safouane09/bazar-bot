@@ -9,13 +9,20 @@ router = Router()
 async def profile_command(message: Message):
     user = get_employee(message.from_user.id)
 
-    if user:
-        full_name = user[2]  # Assuming index 2 is Full Name
-        phone_number = user[3]  # Phone Number
-        invited_by = user[4] if user[4] else "❌ Not Invited"  # Invited By
-        balance = user[5] if user[5] else 0  # Balance
-        earnings = user[6] if user[6] else 0  # Earnings
-        date_joined = user[7]  # Date Joined
+    if not user:
+        await message.answer("❌ You are not registered! Use /start to register.")
+        return
+
+    print("DEBUG: User Data ->", user)  # Debugging Output
+
+    # Ensure user is a dictionary and has required keys
+    if isinstance(user, dict) and all(key in user for key in ["full_name", "phone_number", "invited_by", "balance", "earnings", "date_joined"]):
+        full_name = user.get("full_name", "❌ Not Provided")
+        phone_number = user.get("phone_number", "❌ Not Provided")
+        invited_by = user.get("invited_by", "❌ Not Invited")
+        balance = user.get("balance", 0)
+        earnings = user.get("earnings", 0)
+        date_joined = user.get("date_joined", "Unknown")
 
         profile_text = (
             f"📋 *Your Profile*\n"
@@ -26,7 +33,7 @@ async def profile_command(message: Message):
             f"💵 *Total Earnings:* {earnings} DZD\n"
             f"📅 *Joined On:* {date_joined}\n"
         )
-
         await message.answer(profile_text, parse_mode="Markdown")
+
     else:
-        await message.answer("❌ You are not registered! Use /start to register.")
+        await message.answer("❌ Error: Your profile data is incomplete. Contact support.")

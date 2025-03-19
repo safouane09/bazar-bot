@@ -126,7 +126,11 @@ def get_employee(telegram_id):
         cursor.execute("SELECT * FROM employees WHERE telegram_id = ?", (telegram_id,))
         employee = cursor.fetchone()
 
-    return dict(employee) if employee else None  # Convert row to dictionary
+        if employee:
+            return dict(employee)  # Convert row to dictionary safely
+
+    return None  # Return None if the employee is not found
+
 def add_order(employee_telegram_id, customer_fullname, customer_phone, product_name, product_code, quantity, wilaya, baladiya, exact_address):
     """Adds an order placed by an employee."""
     with get_db_connection() as conn:
