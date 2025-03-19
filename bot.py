@@ -1,13 +1,26 @@
 import asyncio
 import logging
-import threading
+import os
+import json
+from aiohttp import web  # ✅ Web server for Koyeb health check
 from aiogram import Bot, Dispatcher
-from aiohttp import web  # ✅ Import web server
 
+# ✅ Retrieve Google Drive credentials from environment variables
+google_credentials = os.getenv("GOOGLE_CREDENTIALS")
+if google_credentials:
+    with open("credentials.json", "w") as f:
+        f.write(google_credentials)
+    print("✅ credentials.json file created successfully!")
+else:
+    print("❌ GOOGLE_CREDENTIALS environment variable is missing!")
+
+# ✅ Import bot token
 from config import BOT_TOKEN
+
+# ✅ Import all handlers
 from handlers import start, profile
 from handlers.referrals import router as referrals_router
-from handlers.order import router as order_router  # ✅ Import order router
+from handlers.order import router as order_router
 from handlers.order_handlers import router as order_handlers_router
 from handlers.earnings import router as earnings_router
 from handlers.request_payement import router as request_payement_router
@@ -17,14 +30,14 @@ from handlers.removeuser import router as removeuser_router
 from handlers.list_users import router as list_users_router
 from handlers.orders import router as orders_router
 
-# Configure logging
+# ✅ Configure logging
 logging.basicConfig(level=logging.INFO)
 
-# Initialize bot and dispatcher
+# ✅ Initialize bot and dispatcher
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-# Register handlers
+# ✅ Register handlers
 dp.include_router(start.router)
 dp.include_router(profile.router)
 dp.include_router(referrals_router)
@@ -50,15 +63,14 @@ async def run_web_server():
     site = web.TCPSite(runner, "0.0.0.0", 8000)
     await site.start()
 
+# ✅ Main function (bot + web server)
 async def main():
-    logging.info("Starting bot...")
-
-    # ✅ Run bot and web server together
+    logging.info("🚀 Starting bot...")
     await asyncio.gather(
         dp.start_polling(bot),
         run_web_server()
     )
 
+# ✅ Run the bot
 if __name__ == "__main__":
     asyncio.run(main())
-#hna modifyiiit
