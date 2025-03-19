@@ -5,8 +5,8 @@ import json
 from aiohttp import web  # ✅ Web server for Koyeb health check
 from aiogram import Bot, Dispatcher
 from gdrive import download_db, upload_db
-from config import DB_PATH, GDRIVE_FOLDER_ID
-
+from config import  GDRIVE_FOLDER_ID
+from database import DB_PATH
 # Download database from Google Drive
 download_db(DB_PATH, GDRIVE_FOLDER_ID)
 
