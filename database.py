@@ -1,7 +1,5 @@
 import sqlite3
 
-import cursor
-
 DB_PATH = "bazarbot.db"
 
 def get_db_connection():

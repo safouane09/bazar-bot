@@ -1,18 +1,16 @@
 import os
 from datetime import datetime
+
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import Message, FSInputFile
+from reportlab.lib.colors import black, gray
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
+
 from config import ADMIN_ID  # ✅ Import admin list
 from database import add_order, get_employee
-
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from reportlab.lib.colors import black, gray
-from datetime import datetime
 
 router = Router()
 
