@@ -55,6 +55,58 @@ def create_tables():
                 FOREIGN KEY (invited_by) REFERENCES employees (id)
             );
         ''')
+        # Create referrals table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS referrals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                referrer_id INTEGER NOT NULL,
+                referred_id INTEGER NOT NULL,
+                referred_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (referrer_id) REFERENCES employees (id),
+                FOREIGN KEY (referred_id) REFERENCES employees (id),
+                UNIQUE (referred_id)  -- Ensures a user can only be referred once
+            )
+        ''')
+
+        # Create orders table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                employee_id INTEGER NOT NULL,
+                customer_fullname TEXT NOT NULL,
+                customer_phone TEXT NOT NULL,
+                product_name TEXT NOT NULL,
+                product_code TEXT NOT NULL,
+                quantity INTEGER NOT NULL,
+                wilaya TEXT NOT NULL,
+                baladiya TEXT NOT NULL,
+                exact_address TEXT NOT NULL,
+                status TEXT DEFAULT 'Pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (employee_id) REFERENCES employees (id)
+            )
+        ''')
+
+
+        # Create payement table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            employee_id INTEGER NOT NULL,
+            employee_name TEXT NOT NULL,
+            phone_number TEXT NOT NULL,
+            amount INTEGER NOT NULL,
+            status TEXT CHECK( status IN ('pending', 'approved', 'paid') ) DEFAULT 'pending',
+            total_balance INTEGER NOT NULL,
+            requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            approved_at TIMESTAMP NULL
+        )
+        ''')
+
+
+
+
+        print("✅ All tables created successfully!")
         conn.commit()
         logging.info("✅ Database tables created successfully!")
     except sqlite3.Error as e:
