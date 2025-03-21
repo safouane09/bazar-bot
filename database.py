@@ -132,127 +132,176 @@ def modify_db(query, params=()):
         conn.close()
 
 
-# ✅ Run table creation on startup
-create_tables()
 
 
-
-
-
-# ✅ Employee Functions
 def add_employee(telegram_id, full_name, phone_number, referrer_id=None):
     """Adds a new employee to the database."""
     with get_db_connection() as conn:
         cursor = conn.cursor()
 
+        # ✅ Check if the user already exists
         cursor.execute("SELECT id FROM employees WHERE telegram_id = ?", (telegram_id,))
-        if cursor.fetchone():
-            logging.warning(f"⚠️ Employee with Telegram ID {telegram_id} already exists!")
+        existing_user = cursor.fetchone()
+        if existing_user:
+            print(f"⚠️ Employee with Telegram ID {telegram_id} already exists! No registration needed.")
             return False
 
+        # ✅ Check if the referral ID is valid (must exist in DB)
         if referrer_id:
             cursor.execute("SELECT id FROM employees WHERE telegram_id = ?", (referrer_id,))
             referrer = cursor.fetchone()
+
             if not referrer:
-                logging.warning(f"⚠️ Invalid referral ID {referrer_id}. Skipping referral reward.")
+                print(f"⚠️ Referral ID {referrer_id} is invalid. Skipping referral reward.")
                 referrer_id = None
             else:
-                referrer_id = referrer[0]
+                referrer_id = referrer[0]  # Get actual employee ID
 
-        modify_db(
-            "INSERT INTO employees (telegram_id, full_name, phone_number, invited_by) VALUES (?, ?, ?, ?)",
+        # ✅ Register the new employee
+        cursor.execute(
+            "INSERT INTO employees (telegram_id, full_name, phone_number, invited_by, balance, earnings, date_joined, invite_count) VALUES (?, ?, ?, ?, 0, 0, CURRENT_TIMESTAMP, 0)",
             (telegram_id, full_name, phone_number, referrer_id)
         )
-        logging.info(f"✅ Employee {telegram_id} added successfully!")
 
+        print(f"✅ Employee {telegram_id} added successfully!")
+
+        # ✅ Handle referral tracking
         if referrer_id:
-            from handlers.referral_utils import add_referral
+            from handlers.referral_utils import add_referral  # 🔥 FIX: Import inside function
             add_referral(referrer_id, telegram_id)
 
     return True
 
-
 def get_employee(telegram_id):
-    """Fetches an employee from the database by Telegram ID."""
+    """Fetches an employee from the database by Telegram ID and returns it as a dictionary."""
     with get_db_connection() as conn:
-        conn.row_factory = sqlite3.Row
+        conn.row_factory = sqlite3.Row  # Enables dictionary-like row access
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM employees WHERE telegram_id = ?", (telegram_id,))
         employee = cursor.fetchone()
-        return dict(employee) if employee else None
 
+        if employee:
+            return dict(employee)  # Convert row to dictionary safely
 
-# ✅ Orders Functions
+    return None  # Return None if the employee is not found
+
 def add_order(employee_telegram_id, customer_fullname, customer_phone, product_name, product_code, quantity, wilaya, baladiya, exact_address):
     """Adds an order placed by an employee."""
     with get_db_connection() as conn:
         cursor = conn.cursor()
 
+        # ✅ Get employee ID from Telegram ID
         cursor.execute("SELECT id FROM employees WHERE telegram_id = ?", (employee_telegram_id,))
         employee = cursor.fetchone()
+
         if not employee:
-            logging.warning(f"⚠️ Employee with Telegram ID {employee_telegram_id} not found!")
+            print(f"⚠️ Employee with Telegram ID {employee_telegram_id} not found!")
             return False
 
         employee_id = employee[0]
 
-        modify_db(
+        # ✅ Insert order
+        cursor.execute(
             "INSERT INTO orders (employee_id, customer_fullname, customer_phone, product_name, product_code, quantity, wilaya, baladiya, exact_address, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')",
             (employee_id, customer_fullname, customer_phone, product_name, product_code, quantity, wilaya, baladiya, exact_address)
         )
-        logging.info(f"✅ Order stored for Employee {employee_telegram_id}")
+
+        print(f"✅ Order stored for Employee {employee_telegram_id}")
 
     return True
 
-
 def get_employee_orders(employee_telegram_id):
-    """Fetches all orders placed by an employee."""
+    """Fetches all past orders placed by the employee."""
     with get_db_connection() as conn:
         cursor = conn.cursor()
 
+        # Get Employee ID from Telegram ID
         cursor.execute("SELECT id FROM employees WHERE telegram_id = ?", (employee_telegram_id,))
         employee = cursor.fetchone()
+
         if not employee:
-            return []
+            return []  # Employee not found
 
-        cursor.execute("SELECT product_name, product_code, quantity, wilaya, baladiya, status FROM orders WHERE employee_id = ? ORDER BY id DESC", (employee[0],))
-        return cursor.fetchall()
+        employee_id = employee[0]
+
+        # Fetch all orders for this employee
+        cursor.execute("""
+            SELECT product_name, product_code, quantity, wilaya, baladiya, status
+            FROM orders
+            WHERE employee_id = ?
+            ORDER BY id DESC
+        """, (employee_id,))
+
+        return cursor.fetchall()  # List of orders
 
 
-# ✅ Earnings Functions
+
+
+
+
 def get_employee_earnings(telegram_id):
     """Fetch total earnings and available balance for an employee."""
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT balance, earnings FROM employees WHERE telegram_id = ?", (telegram_id,))
-            result = cursor.fetchone()
-            return result if result else (0, 0)
+
+            # Fetch total earnings (sum of commissions from orders)
+            cursor.execute(
+                "SELECT balance FROM employees WHERE telegram_id = ?",
+                (telegram_id,)
+            )
+            available_balance = cursor.fetchone()[0] or 0
+
+            # Fetch total paid earnings (approved payments)
+            cursor.execute(
+                "SELECT earnings FROM employees WHERE telegram_id = ?",
+                (telegram_id,)
+            )
+            total_earnings = cursor.fetchone()[0] or 0
+
+
+
+        return total_earnings, available_balance
+
     except sqlite3.Error as e:
-        logging.error(f"Database error: {e}")
-        return 0, 0
+        print(f"Database error: {e}")
+        return 0, 0  # Return 0 earnings in case of an error
 
 
-# ✅ Payment Requests
-def request_payment(telegram_id, amount):
+
+
+
+def request_payment(telegram_id,amount):
     """Request a payment if the employee has enough balance."""
     with get_db_connection() as conn:
         cursor = conn.cursor()
 
-        cursor.execute("SELECT balance, full_name, phone_number FROM employees WHERE telegram_id = ?", (telegram_id,))
-        result = cursor.fetchone()
-        if not result:
-            return False, 0
+        # Get employee total balance
+        cursor.execute("SELECT balance FROM employees WHERE telegram_id = ?", (telegram_id,))
+        total_balance = cursor.fetchone()[0] or 0  # Avoid NoneType errors
 
-        balance, full_name, phone_number = result
-        if balance < 2000 or amount > balance:
-            return False, balance
+        # Get employee total balance
+        cursor.execute("SELECT full_name FROM employees WHERE telegram_id = ?", (telegram_id,))
+        employee_name = cursor.fetchone()[0] or 0  # Avoid NoneType errors
+        # Get employee total balance
+        cursor.execute("SELECT phone_number FROM employees WHERE telegram_id = ?", (telegram_id,))
+        phone_number = cursor.fetchone()[0] or 0  # Avoid NoneType errors
 
-        modify_db(
-            "INSERT INTO payments (employee_id, employee_name, phone_number, amount, status, total_balance) VALUES (?, ?, ?, ?, 'pending', ?)",
-            (telegram_id, full_name, phone_number, amount, balance)
-        )
-        return True, balance
+
+
+        # Check if employee has enough balance
+        if total_balance < 2000 or amount > total_balance:
+            return False, total_balance  # Not enough balance
+
+        # Insert request into payments table
+        cursor.execute("""
+            INSERT INTO payments (employee_id, employee_name, phone_number, amount, status, total_balance)
+            VALUES (?, ?, ?, ?, 'pending', ?)
+        """, (telegram_id, employee_name, phone_number, amount, total_balance))
+
+        conn.commit()
+
+    return True, total_balance  # Request successful
 
 
 # ✅ Run table creation on startup
